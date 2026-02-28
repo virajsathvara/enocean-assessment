@@ -14,7 +14,9 @@
     "test": "jest --config jest.config.ts",
     "test:integration": "FLUSH_DEBUG_DELAY_MS=200 jest --config jest.integration.config.ts --runInBand --forceExit",
     "test:all": "yarn test && yarn test:integration",
-    "lint": "eslint \"{apps,libs}/**/*.ts\" --fix"
+    "lint": "eslint \"{apps,libs}/**/*.ts\" --fix",
+    "start:consumer": "npx ts-node apps/worker/src/main.ts",
+    "start:api": "npx ts-node apps/api/src/main.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

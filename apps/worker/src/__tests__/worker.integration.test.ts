@@ -101,7 +101,7 @@ describe('Worker Integration — Concurrency Bug', () => {
     // Rapidly ingest all events — this will trigger both size-based
     // and timer-based flushes, creating overlapping async operations
     for (const event of allEvents) {
-      bufferService.addEvent(event);
+      await bufferService.addEvent(event);
     }
 
     // Wait for all flushes to complete
@@ -136,7 +136,7 @@ describe('Worker Integration — Concurrency Bug', () => {
 
     // Ingest rapidly
     for (const event of events) {
-      bufferService.addEvent(event);
+      await bufferService.addEvent(event);
     }
 
     // Wait for events to be flushed

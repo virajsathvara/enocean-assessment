@@ -39,7 +39,7 @@ export class BufferService {
    * Add an event to the device buffer.
    * Will trigger flush if buffer is full.
    */
-  addEvent(event: SensorEvent): void {
+  async addEvent(event: SensorEvent): Promise<void> {
     let buffer = this.buffers.get(event.deviceId);
     if (!buffer) {
       buffer = { items: [], timer: null };
@@ -57,7 +57,7 @@ export class BufferService {
     }
 
     if (buffer.items.length >= this.maxBufferSize) {
-      this.flush(event.deviceId);
+      await this.flush(event.deviceId);
     }
   }
 

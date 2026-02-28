@@ -30,6 +30,6 @@ module.exports = {
     'simple-import-sort/exports': 'error',
     'prefer-template': 'error',
     'arrow-body-style': ['error', 'as-needed'],
-    'prettier/prettier': ['error', { singleQuote: true }],
+    'prettier/prettier': ['error', { singleQuote: true, endOfLine: 'auto' }],
   },
 };
