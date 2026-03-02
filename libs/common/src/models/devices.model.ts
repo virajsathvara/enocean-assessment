@@ -11,17 +11,11 @@ export class GetDeviceHistoryQuery {
   @IsOptional()
   @IsInt()
   @Transform(({ value }) => parseInt(value))
-  @ValidateIf((o) => o.to === undefined || o.from === undefined || Number(o.from) <= Number(o.to), {
-    message: 'from cannot be greater than to',
-  })
   from?: number;
 
   @IsOptional()
   @IsInt()
   @Transform(({ value }) => parseInt(value))
-  @ValidateIf((o) => o.to === undefined || o.from === undefined || Number(o.from) >= Number(o.to), {
-    message: 'to cannot be less than from',
-  })
   to?: number;
 
   @IsInt()
@@ -38,16 +32,10 @@ export class GetDeviceHistoryQuery {
 export class getDeviceSensorAggregateQuery {
   @IsInt()
   @Transform(({ value }) => parseInt(value))
-  @ValidateIf((o) => o.to === undefined || o.from === undefined || Number(o.from) <= Number(o.to), {
-    message: 'from cannot be greater than to',
-  })
   from!: number;
 
   @IsInt()
   @Transform(({ value }) => parseInt(value))
-  @ValidateIf((o) => o.to === undefined || o.from === undefined || Number(o.from) >= Number(o.to), {
-    message: 'to cannot be less than from',
-  })
   to!: number;
 
   @IsString()

@@ -62,3 +62,53 @@ export async function waitForLatestDevices(
   }
   return count;
 }
+
+/**
+ * Push test events directly to mongo, bypassing the worker. Useful for testing the API against known data.
+ * This function is a bit of a Frankenstein, but it gets the job done without needing to start the whole worker machinery. It also ensures the latest collection is updated consistently with history, which is important for API tests.
+ * In a real-world scenario, we might want to have a more robust test data setup strategy, but this works for our current needs.
+ */
+export async function insertTestEvents(
+  history: Collection<DeviceHistoryDoc>,
+  latest: Collection<DeviceLatestDoc>,
+  deviceId: string,
+) {
+  const historyDocs = createTestHistoryDocs(deviceId, ['temp', 'humidity'], 10);
+  await history.insertMany(historyDocs);
+
+  // Update latest collection based on inserted events
+  const latestUpdates: Record<string, { value: any; ts: number }> = {};
+  for (const h of historyDocs) {
+    const existing = latestUpdates[h.sensor];
+    if (!existing || h.ts > existing.ts) {
+      latestUpdates[h.sensor] = { value: h.value, ts: h.ts };
+    }
+  }
+  const updateFields: Record<string, any> = { updatedAt: new Date() };
+  for (const [sensor, data] of Object.entries(latestUpdates)) {
+    updateFields[`sensors.${sensor}`] = data;
+  }
+
+  await latest.updateOne({ _id: deviceId }, { $set: updateFields }, { upsert: true });
+}
+
+function createTestHistoryDocs(
+  deviceId: string,
+  sensors: string[],
+  readingsPerSensor: number,
+): DeviceHistoryDoc[] {
+  const docs: DeviceHistoryDoc[] = [];
+  for (const sensor of sensors) {
+    for (let i = 0; i < readingsPerSensor; i++) {
+      docs.push({
+        _id: `${deviceId}-${sensor}-${i}`,
+        deviceId,
+        sensor,
+        value: Math.floor(Math.random() * 1000),
+        ts: Date.now() + i * 100,
+        ingestedAt: new Date(),
+      });
+    }
+  }
+  return docs;
+}

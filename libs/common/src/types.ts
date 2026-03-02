@@ -24,6 +24,7 @@ export interface DeviceLatestDoc {
  * Shape of a document in devices.history collection
  */
 export interface DeviceHistoryDoc {
+  _id?: string;
   deviceId: string;
   ts: number;
   sensor: string;
