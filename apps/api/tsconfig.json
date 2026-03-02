@@ -10,7 +10,7 @@
   },
   "include": [
     "src/**/*"
-  ],
+, "../../libs/common/models"  ],
   "references": [
     {
       "path": "../../libs/common"

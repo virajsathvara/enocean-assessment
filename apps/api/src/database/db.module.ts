@@ -2,7 +2,6 @@ import { Global, Module } from '@nestjs/common';
 
 import { loadConfig } from '../../../../libs/common/src';
 import { MongoDBService } from './db.service';
-import { DevicesRepository } from './repositories/devices.repository';
 const config = loadConfig();
 
 @Global()
@@ -13,8 +12,7 @@ const config = loadConfig();
       useValue: config,
     },
     MongoDBService,
-    DevicesRepository,
   ],
-  exports: [MongoDBService, DevicesRepository],
+  exports: [MongoDBService],
 })
 export class MongoDbModule {}

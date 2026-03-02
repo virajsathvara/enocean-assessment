@@ -1,3 +1,5 @@
+import { INTERVAL_MS } from './helpers';
+
 /**
  * Kafka input event shape — comes from device gateways
  * TODO: add validation schema (zod?)
@@ -51,3 +53,24 @@ export type GetDeviceHistoryQuery = {
   page: number;
   limit: number;
 };
+
+export type GetDeviceHistoryResult = {
+  data: DeviceHistoryDoc[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type getDeviceSensorAggregateQuery = {
+  from: number;
+  to: number;
+  interval: keyof typeof INTERVAL_MS;
+};
+
+export interface DeviceSensorAggregateResult {
+  ts: number;
+  min: number;
+  max: number;
+  avg: number;
+  count: number;
+}

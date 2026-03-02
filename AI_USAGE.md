@@ -16,9 +16,9 @@ If you did not use AI tools, state that explicitly.
 
 List all AI tools used:
 
-- Tool name:
-- Version / model (if known):
-- How frequently used: (rare / occasional / heavy)
+- Tool name: Github Copilot
+- Version / model (if known): Claude Haiku 4.5
+- How frequently used: (rare / occasional / heavy): occasional, line completions, suggestions, unit test cases.
 
 Example:
 
@@ -41,6 +41,9 @@ Describe what the AI helped with:
 
 Be specific.
 
+- Suggested the API validation logic which I then implemented manually using class-validator.
+- Generated the initial structure of the integration tests for the new endpoint.
+
 Example:
 
 - Generated initial mutex pattern for buffer locking
@@ -53,8 +56,8 @@ Example:
 
 Explain how you verified AI-generated output:
 
-- Tests written or updated
-- Manual reasoning
+- Tests written or updated : Write Integration and Unit tests to cover the Ai-generated code.
+- Manual reasoning: Checked the logic of suggestions and updated it as needed to fit the existing codebase and constraints.
 - Logs / debugging
 - Code review
 - Stress testing

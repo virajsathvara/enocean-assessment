@@ -1,69 +1,178 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { IsNumberString, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
 import { Collection, Filter } from 'mongodb';
 
-import { DeviceHistoryDoc, Logger } from '../../../../../libs/common/src';
+import {
+  DeviceHistoryDoc,
+  DeviceSensorAggregateResult,
+  GetDeviceHistoryQuery,
+  Logger,
+} from '../../../../../libs/common/src';
+import { INTERVAL_MS } from '../../../../../libs/common/src/helpers';
 import { MongoDBService } from '../../database/db.service';
 const logger = new Logger('devices-service');
-
-export class GetDeviceHistoryQuery {
-  @IsOptional()
-  @IsString()
-  sensor?: string;
-
-  @IsOptional()
-  @IsNumberString()
-  @ValidateIf((o) => o.to === undefined || o.from === undefined || Number(o.from) <= Number(o.to), {
-    message: 'from cannot be greater than to',
-  })
-  from?: number;
-
-  @IsOptional()
-  @IsNumberString()
-  @ValidateIf((o) => o.to === undefined || o.from === undefined || Number(o.from) >= Number(o.to), {
-    message: 'to cannot be less than from',
-  })
-  to?: number;
-
-  @IsNumberString()
-  @Min(1, { message: 'page must be >= 1' })
-  page = 1;
-
-  @IsNumberString()
-  @Min(1, { message: 'limit must be >= 1' })
-  limit = 50;
-}
 
 @Injectable()
 export class DevicesService {
   constructor(private readonly dbService: MongoDBService) {}
 
-  async getDeviceHistory(deviceId: string, query: GetDeviceHistoryQuery) {
-    // basic sanity checks; controller already ensures this is called from an HTTP path but
-    // we still guard against programmer errors or malicious callers.
-    if (!deviceId || typeof deviceId !== 'string') {
-      throw new BadRequestException('deviceId must be a non-empty string');
-    }
+  async getDeviceHistory(deviceId: string, query: GetDeviceHistoryQuery, urc?: string) {
+    try {
+      // basic sanity checks for required params and types
+      if (!deviceId || typeof deviceId !== 'string') {
+        throw new BadRequestException('deviceId must be a non-empty string');
+      }
 
-    const historyCollection = this.dbService
-      .getDb()
-      .collection('devices.history') as Collection<DeviceHistoryDoc>;
+      logger.info(
+        `Received getDeviceHistory request for deviceId: ${deviceId}, query: ${JSON.stringify(query)}, urc: ${urc}`,
+      );
 
-    const filter: Filter<DeviceHistoryDoc> = { deviceId };
-    if (query.sensor) filter.sensor = query.sensor;
-    if (query.from !== undefined || query.to !== undefined) {
-      filter.ts = {};
-      if (query.from !== undefined) filter.ts.$gte = Number(query.from);
-      if (query.to !== undefined) filter.ts.$lte = Number(query.to);
+      const { limit, page, from, to, sensor } = query;
+      if (from && to && from > to) {
+        throw new BadRequestException('from cannot be greater than to');
+      }
+
+      const filter: Filter<DeviceHistoryDoc> = { deviceId };
+      if (sensor) filter.sensor = sensor;
+      if (from !== undefined || to !== undefined) {
+        filter.ts = {};
+        if (from !== undefined) filter.ts.$gte = from;
+        if (to !== undefined) filter.ts.$lte = to;
+      }
+
+      const historyCollection = this.dbService
+        .getDb()
+        .collection('devices.history') as Collection<DeviceHistoryDoc>;
+
+      /**
+       * To optimize for large datasets, we run the countDocuments and find queries in parallel. Both queries use the same filter to ensure consistency.
+       * Another option is to use aggregation with $facet to get both the paginated results and total count in a single query, but that may have performance implications depending on the dataset size and indexes.
+       * Since this is sensor data which can be high volume, I have used separate queries to leverage indexes effectively.
+       */
+      const [deviceHistory, totalCount] = await Promise.all([
+        historyCollection
+          .find(filter)
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .sort({ ts: -1 }) // sort by timestamp descending
+          .toArray(),
+        historyCollection.countDocuments(filter),
+      ]);
+
+      logger.info(
+        `getDeviceHistory request completed for deviceId: ${deviceId}, returned ${deviceHistory.length} records out of total ${totalCount}, urc: ${urc}`,
+      );
+
+      return {
+        data: deviceHistory,
+        total: totalCount,
+        page,
+        limit,
+      };
+    } catch (error: any) {
+      logger.error(`Error in getDeviceHistory: ${error.message}, urc: ${urc}`, { error });
+      throw error;
     }
-    logger.info(
-      `Querying device history with filter: ${JSON.stringify(filter)}, page: ${query.page}, limit: ${query.limit}`,
-    );
-    return historyCollection
-      .find(filter)
-      .skip((Number(query.page) - 1) * Number(query.limit))
-      .limit(Number(query.limit))
-      .sort({ ts: -1 }) // sort by timestamp descending
-      .toArray();
+  }
+
+  /**
+   * build a pipeline for `/devices/:deviceId/sensors/:sensor/aggregate`
+   *
+   * @param deviceId  – string
+   * @param sensor    – string
+   * @param from      – number (inclusive unix ts)
+   * @param to        – number (inclusive unix ts)
+   * @param intervalMs– window size in milliseconds
+   */
+  makeAggregationPipeline(
+    deviceId: string,
+    sensor: string,
+    from: number,
+    to: number,
+    intervalMs: number,
+  ) {
+    return [
+      // 1. match the device, sensor, time range and ensure value is numeric
+      {
+        $match: {
+          deviceId,
+          sensor,
+          ts: { $gte: from, $lte: to },
+          // value might be stored as number or numeric string; $type check
+          $expr: { $in: [{ $type: '$value' }, ['double', 'int', 'long', 'decimal']] },
+        },
+      },
+
+      // 2. compute a bucket key by rounding timestamp down to a multiple of intervalMs
+      {
+        $addFields: {
+          bucketTs: {
+            $subtract: [
+              '$ts',
+              { $mod: ['$ts', intervalMs] }, // ts - (ts % interval)
+            ],
+          },
+          numericValue: { $toDouble: '$value' }, // safe cast for aggregation
+        },
+      },
+
+      // 3. group by the bucket key and aggregate
+      {
+        $group: {
+          _id: '$bucketTs',
+          min: { $min: '$numericValue' },
+          max: { $max: '$numericValue' },
+          avg: { $avg: '$numericValue' },
+          count: { $sum: 1 },
+        },
+      },
+
+      // 4. convert the _id field back to ts and sort ascending
+      {
+        $project: {
+          _id: 0,
+          ts: '$_id',
+          min: 1,
+          max: 1,
+          avg: 1,
+          count: 1,
+        },
+      },
+      { $sort: { ts: 1 } },
+    ];
+  }
+
+  async getDeviceSensorAggregate(
+    deviceId: string,
+    sensor: string,
+    from: number,
+    to: number,
+    interval: keyof typeof INTERVAL_MS,
+  ): Promise<DeviceSensorAggregateResult[]> {
+    try {
+      // basic sanity checks for required params
+      if (!deviceId || typeof deviceId !== 'string') {
+        throw new BadRequestException('deviceId must be a non-empty string');
+      }
+      if (!sensor || typeof sensor !== 'string') {
+        throw new BadRequestException('sensor must be a non-empty string');
+      }
+
+      const intervalMs = INTERVAL_MS[interval];
+
+      const pipeline = this.makeAggregationPipeline(deviceId, sensor, from, to, intervalMs);
+      logger.info(`Running aggregation with pipeline: ${JSON.stringify(pipeline)}`);
+
+      const historyCollection = this.dbService
+        .getDb()
+        .collection('devices.history') as Collection<DeviceHistoryDoc>;
+      return (await historyCollection
+        .aggregate(pipeline)
+        .toArray()) as DeviceSensorAggregateResult[];
+    } catch (error: any) {
+      logger.error(`Error in getDeviceSensorAggregate: ${error.message}`, { error });
+      throw error instanceof BadRequestException
+        ? error
+        : new BadRequestException('Invalid query parameters');
+    }
   }
 }
