@@ -36,3 +36,18 @@ export interface BufferEntry {
   items: SensorEvent[];
   timer: ReturnType<typeof setTimeout> | null;
 }
+
+export type GetDeviceHistoryResponse = {
+  data: DeviceHistoryDoc[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type GetDeviceHistoryQuery = {
+  sensor?: string;
+  from?: number;
+  to?: number;
+  page: number;
+  limit: number;
+};
