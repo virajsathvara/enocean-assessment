@@ -50,9 +50,9 @@ export class BufferService {
 
     // Start timer if not already running
     if (!buffer.timer) {
-      buffer.timer = setTimeout(() => {
+      buffer.timer = setTimeout(async () => {
         buffer!.timer = null;
-        this.flush(event.deviceId);
+        await this.flush(event.deviceId);
       }, this.intervalMs);
     }
 
@@ -73,6 +73,7 @@ export class BufferService {
     if (!items?.length) return;
 
     const toFlush = items;
+    buffer!.items = [];
 
     logger.debug(`Flushing ${toFlush.length} events for ${deviceId}`);
 
@@ -86,7 +87,8 @@ export class BufferService {
       logger.error(`Flush failed for ${deviceId}: ${(err as Error).message}`);
       return;
     }
-    items.length = 0;
+    //  Assigned new array on line 76 to clear buffer immediately, allowing new events to be buffered during async flush
+    //  items.length = 0;
 
     if (buffer?.timer) {
       clearTimeout(buffer.timer);

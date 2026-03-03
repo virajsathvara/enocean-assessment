@@ -81,7 +81,7 @@ describe('DevicesService', () => {
         .get('/devices/devTest1/history?page=2&limit=5')
         .expect(200)
         .expect((res) => {
-          expect(res.body.total).toEqual(20);
+          expect(res.body.total).toEqual(30);
           expect(res.body.page).toEqual(2);
           expect(res.body.limit).toEqual(5);
           expect(res.body.data.length).toEqual(5);
@@ -92,12 +92,12 @@ describe('DevicesService', () => {
 
     it('should return device history between from and to', async () => {
       const tsFrom = Date.now() - 5000; // 5 seconds ago
-      const tsTo = Date.now() + 5000; // 5 seconds in the future
+      const tsTo = Date.now() + 20000; // 20 seconds in the future
       await request(app.getHttpServer())
         .get(`/devices/devTest1/history?page=2&limit=5&from=${tsFrom}&to=${tsTo}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.total).toEqual(20);
+          expect(res.body.total).toEqual(30);
           expect(res.body.page).toEqual(2);
           expect(res.body.limit).toEqual(5);
           expect(res.body.data.length).toEqual(5);
