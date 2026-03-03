@@ -20,35 +20,18 @@ List all AI tools used:
 - Version / model (if known): Claude Haiku 4.5
 - How frequently used: (rare / occasional / heavy): occasional, line completions, suggestions, unit test cases.
 
-Example:
-
-- ChatGPT (GPT-5.x), occasional
-- GitHub Copilot, heavy
-
 ---
 
 ## What AI Was Used For
 
 Describe what the AI helped with:
 
-- Code generation
-- Refactoring
-- Debugging ideas
-- Test scaffolding
-- Documentation
-- Architecture reasoning
-- Other
-
-Be specific.
-
-- Suggested the API validation logic which I then implemented manually using class-validator.
-- Generated the initial structure of the integration tests for the new endpoint.
-
-Example:
-
-- Generated initial mutex pattern for buffer locking
-- Suggested Mongo atomic update strategy
-- Drafted integration test structure
+- Code generation - Generating the MongoDB aggregation pipeline for the sensor aggregation endpoint.
+- Debugging ideas - Helped brainstorm other options for solving the concurrency issue with the buffer flush, but ultimately I implemented a different approach.Mutex pattern was suggested but rejected due to complexity.
+- Test scaffolding - Generated the initial structure of the unit test cases.
+- Documentation - none in this case, but could be used for generating doc comments or README sections.
+- Architecture reasoning - none
+- Validation Logic - Suggested the API validation logic which I then implemented manually using class-validator.
 
 ---
 
@@ -56,19 +39,11 @@ Example:
 
 Explain how you verified AI-generated output:
 
-- Tests written or updated : Write Integration and Unit tests to cover the Ai-generated code.
-- Manual reasoning: Checked the logic of suggestions and updated it as needed to fit the existing codebase and constraints.
-- Logs / debugging
-- Code review
-- Stress testing
-- Reruns for determinism
-
-Example:
-
-- Wrote failing test before fix
-- Verified deterministic behavior over 20 runs
-- Reviewed concurrency logic manually
-- Confirmed no event loss in history
+- Wrote unit tests for the new API endpoint to verify correct behavior with various input parameters.
+- Wrote integration tests to verify end-to-end functionality and interaction with the MongoDB database.
+- Manually reviewed the generated aggregation pipeline to ensure it correctly implemented the required bucketing and calculations.
+- added logging to the service method to help verify that the flush logic was working as intended during testing.
+- Verified that the new endpoint correctly handles edge cases (e.g., no data, non-numeric values) through testing and code review.
 
 ---
 
@@ -76,12 +51,7 @@ Example:
 
 If AI produced incorrect or unsafe suggestions:
 
-- What was wrong?
-- How did you fix it?
-
-Example:
-
-- AI suggested global lock — rejected because it removed concurrency
-- Replaced with per-device async lock
-
-If none:
+- AI suggested Mutex for concurrency control — rejected due to complexity and potential performance issues
+- Implemented a simpler approach of immediately clearing the buffer and allowing new events to be buffered during the async flush operation, which maintains concurrency without blocking new events.
+- AI suggested manual validation logic for API parameters — implemented using class-validator decorators for cleaner and more maintainable code.
+- AI suggested a different structure for unit tests — modified to fit the Nestjs testing patterns and ensure proper setup/teardown of test data in MongoDB.
