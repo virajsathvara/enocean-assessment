@@ -5,6 +5,7 @@ import {
   DeviceHistoryDoc,
   DeviceSensorAggregateResult,
   GetDeviceHistoryQuery,
+  getDeviceSensorAggregateArgs,
   Logger,
 } from '../../../../../libs/common/src';
 import { INTERVAL_MS } from '../../../../../libs/common/src/helpers';
@@ -17,14 +18,13 @@ export class DevicesService {
 
   async getDeviceHistory(deviceId: string, query: GetDeviceHistoryQuery, urc?: string) {
     try {
+      logger.info(
+        `Received getDeviceHistory request for deviceId: ${deviceId}, query: ${JSON.stringify(query)}, urc: ${urc}`,
+      );
       // basic sanity checks for required params and types
       if (!deviceId || typeof deviceId !== 'string') {
         throw new BadRequestException('deviceId must be a non-empty string');
       }
-
-      logger.info(
-        `Received getDeviceHistory request for deviceId: ${deviceId}, query: ${JSON.stringify(query)}, urc: ${urc}`,
-      );
 
       const { limit, page, from, to, sensor } = query;
       if (from && to && from > to) {
@@ -74,15 +74,6 @@ export class DevicesService {
     }
   }
 
-  /**
-   * build a pipeline for `/devices/:deviceId/sensors/:sensor/aggregate`
-   *
-   * @param deviceId  – string
-   * @param sensor    – string
-   * @param from      – number (inclusive unix ts)
-   * @param to        – number (inclusive unix ts)
-   * @param intervalMs– window size in milliseconds
-   */
   makeAggregationPipeline(
     deviceId: string,
     sensor: string,
@@ -142,25 +133,20 @@ export class DevicesService {
   }
 
   async getDeviceSensorAggregate(
-    deviceId: string,
-    sensor: string,
-    from: number,
-    to: number,
-    interval: keyof typeof INTERVAL_MS,
+    args: getDeviceSensorAggregateArgs,
   ): Promise<DeviceSensorAggregateResult[]> {
+    const { deviceId, sensor, from, to, interval, urc } = args;
+    const funcLog = `getDeviceSensorAggregate - deviceId: ${deviceId}, sensor: ${sensor}, urc: ${urc}`;
     try {
-      // basic sanity checks for required params
-      if (!deviceId || typeof deviceId !== 'string') {
-        throw new BadRequestException('deviceId must be a non-empty string');
+      logger.info(`Received getDeviceSensorAggregate request for ${funcLog}`);
+      // basic validations for required params and types
+      if (from && to && from > to) {
+        throw new BadRequestException('from cannot be greater than to');
       }
-      if (!sensor || typeof sensor !== 'string') {
-        throw new BadRequestException('sensor must be a non-empty string');
-      }
-
       const intervalMs = INTERVAL_MS[interval];
 
       const pipeline = this.makeAggregationPipeline(deviceId, sensor, from, to, intervalMs);
-      logger.info(`Running aggregation with pipeline: ${JSON.stringify(pipeline)}`);
+      logger.debug(`Aggregation pipeline for ${funcLog}: ${JSON.stringify(pipeline)}`);
 
       const historyCollection = this.dbService
         .getDb()
@@ -169,7 +155,7 @@ export class DevicesService {
         .aggregate(pipeline)
         .toArray()) as DeviceSensorAggregateResult[];
     } catch (error: any) {
-      logger.error(`Error in getDeviceSensorAggregate: ${error.message}`, { error });
+      logger.error(`Error in getDeviceSensorAggregate: ${error.message}, ${funcLog}`, { error });
       throw error instanceof BadRequestException
         ? error
         : new BadRequestException('Invalid query parameters');

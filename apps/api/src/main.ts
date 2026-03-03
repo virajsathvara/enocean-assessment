@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 import { loadConfig, Logger } from '@enocean/common';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

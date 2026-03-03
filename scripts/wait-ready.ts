@@ -1,5 +1,5 @@
-import { MongoClient } from 'mongodb';
 import { Kafka } from 'kafkajs';
+import { MongoClient } from 'mongodb';
 
 /**
  * Waits for MongoDB and Kafka to be ready.
@@ -46,10 +46,7 @@ async function main() {
   const kafkaBrokers = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
 
   console.log('Waiting for dependencies to be ready...');
-  await Promise.all([
-    waitForMongo(mongoUri),
-    waitForKafka(kafkaBrokers),
-  ]);
+  await Promise.all([waitForMongo(mongoUri), waitForKafka(kafkaBrokers)]);
   console.log('All dependencies ready!');
 }
 

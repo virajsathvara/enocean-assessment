@@ -75,7 +75,7 @@ describe('DevicesService', () => {
     });
   });
 
-  describe('Success Cases - GET /devices/:id/history', () => {
+  describe('Happy Paths - GET /devices/:id/history', () => {
     it('should return device history with correct pagination and total count', async () => {
       await request(app.getHttpServer())
         .get('/devices/devTest1/history?page=2&limit=5')
@@ -103,6 +103,58 @@ describe('DevicesService', () => {
           expect(res.body.data.length).toEqual(5);
           // Check that the data is in the expected order (newest first)
           expect(res.body.data[0].ts).toBeGreaterThan(res.body.data[4].ts);
+        });
+    });
+  });
+
+  describe('Validations - GET /devices/:deviceId/sensors/:sensor/aggregate', () => {
+    it('should return 400 for invalid method parameters', async () => {
+      await request(app.getHttpServer())
+        .get('/devices/ /sensors/temperature/aggregate?from=0&to=1772489051894&interval=1m')
+        .expect(400);
+      await request(app.getHttpServer())
+        .get('/devices/dev1/sensors/ /aggregate?from=0&to=1772489051894&interval=1m')
+        .expect(400);
+    });
+
+    it('should return 400 for from and to parameters that are not numbers', async () => {
+      await request(app.getHttpServer())
+        .get('/devices/dev1/sensors/temperature/aggregate?from=abc&to=def&interval=1m')
+        .expect(400);
+      await request(app.getHttpServer())
+        .get('/devices/dev1/sensors/temperature/aggregate?from=123&to=def&interval=1m')
+        .expect(400);
+      await request(app.getHttpServer())
+        .get('/devices/dev1/sensors/temperature/aggregate?from=abc&to=456&interval=1m')
+        .expect(400);
+    });
+
+    it('should return 400 if from is greater than to', async () => {
+      const now = Date.now();
+      await request(app.getHttpServer())
+        .get(`/devices/dev1/sensors/temperature/aggregate?from=${now + 1000}&to=${now}&interval=1m`)
+        .expect(400);
+    });
+  });
+
+  describe('Happy Paths - GET /devices/:deviceId/sensors/:sensor/aggregate', () => {
+    it('should return device history with correct pagination and total count', async () => {
+      const tsFrom = Date.now() - 5000; // 5 seconds ago
+      const tsTo = Date.now() + 15000; // 15 seconds in the future
+
+      // we have pushed 10 events with integer values and 5 readings with non-integer values for devTest1's temperature sensor in the test setup.
+      await request(app.getHttpServer())
+        .get(`/devices/devTest1/sensors/temp/aggregate?from=${tsFrom}&to=${tsTo}&interval=5s`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.length).toBeGreaterThanOrEqual(1);
+
+          const firstData = res.body[0];
+          const total = res.body.reduce((sum: number, bucket: any) => sum + bucket.count, 0);
+          expect(firstData.min).toBeGreaterThanOrEqual(0);
+          expect(firstData.max).toBeGreaterThanOrEqual(firstData.min);
+          expect(firstData.avg).toBeGreaterThanOrEqual(firstData.min);
+          expect(total).toBeGreaterThanOrEqual(10); // at least the 10 integer events should be counted, non-integer values are filtered out in the pipeline
         });
     });
   });

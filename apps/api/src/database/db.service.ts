@@ -19,7 +19,6 @@ export class MongoDBService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    console.log('Closing MongoDB connection');
     await this.client?.close();
     logger.info('MongoDB connection closed');
   }

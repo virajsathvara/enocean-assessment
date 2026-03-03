@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 import { INTERVAL_MS } from '../helpers';
 
@@ -29,6 +29,12 @@ export class GetDeviceHistoryQuery {
   limit = 50;
 }
 
+export class GetDeviceHistoryMethodParams {
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  @IsNotEmpty()
+  deviceId!: string;
+}
 export class getDeviceSensorAggregateQuery {
   @IsInt()
   @Transform(({ value }) => parseInt(value))
@@ -39,8 +45,20 @@ export class getDeviceSensorAggregateQuery {
   to!: number;
 
   @IsString()
-  @ValidateIf((o) => !Object.keys(INTERVAL_MS).includes(o.interval), {
+  @IsEnum(Object.keys(INTERVAL_MS) as Array<keyof typeof INTERVAL_MS>, {
     message: `interval must be one of ${Object.keys(INTERVAL_MS).join(', ')}`,
   })
   interval!: keyof typeof INTERVAL_MS;
+}
+
+export class getDeviceSensorAggregateMethodParams {
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  @IsNotEmpty()
+  deviceId!: string;
+
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  @IsNotEmpty()
+  sensor!: string;
 }

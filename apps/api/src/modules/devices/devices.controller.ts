@@ -5,7 +5,9 @@ import {
   GetDeviceHistoryResult,
 } from '../../../../../libs/common/src';
 import {
+  GetDeviceHistoryMethodParams,
   GetDeviceHistoryQuery,
+  getDeviceSensorAggregateMethodParams,
   getDeviceSensorAggregateQuery,
 } from '../../../../../libs/common/src/models/devices.model';
 import { DevicesService } from './devices.service';
@@ -16,7 +18,7 @@ export class DevicesController {
 
   @Get(':deviceId/history')
   async getDeviceHistory(
-    @Param() params: { deviceId: string },
+    @Param() params: GetDeviceHistoryMethodParams,
     @Query() query: GetDeviceHistoryQuery,
     @Headers('unique-reference-code') urc: string,
   ): Promise<GetDeviceHistoryResult> {
@@ -26,15 +28,17 @@ export class DevicesController {
   //  aggregated sensor data for a device.
   @Get(':deviceId/sensors/:sensor/aggregate')
   async getDeviceSensorAggregate(
-    @Param() params: { deviceId: string; sensor: string },
+    @Param() params: getDeviceSensorAggregateMethodParams,
     @Query() query: getDeviceSensorAggregateQuery,
+    @Headers('unique-reference-code') urc: string,
   ): Promise<DeviceSensorAggregateResult[]> {
-    return await this.devicesService.getDeviceSensorAggregate(
-      params.deviceId,
-      params.sensor,
-      Number(query.from) || 0,
-      Number(query.to) || Date.now(),
-      query.interval,
-    );
+    return await this.devicesService.getDeviceSensorAggregate({
+      deviceId: params.deviceId,
+      sensor: params.sensor,
+      from: Number(query.from) || 0,
+      to: Number(query.to) || Date.now(),
+      interval: query.interval,
+      urc,
+    });
   }
 }

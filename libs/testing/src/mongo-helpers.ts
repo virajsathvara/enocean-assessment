@@ -105,7 +105,19 @@ function createTestHistoryDocs(
         deviceId,
         sensor,
         value: Math.floor(Math.random() * 1000),
-        ts: Date.now() + i * 100,
+        ts: Date.now() + i * 1000,
+        ingestedAt: new Date(),
+      });
+    }
+
+    // pushing string value for one reading to test mixed types in latest
+    for (let i = 0; i < readingsPerSensor / 2; i++) {
+      docs.push({
+        _id: `${deviceId}-${sensor}-STR-${i}`,
+        deviceId,
+        sensor,
+        value: String(Math.floor(Math.random() * 1000)),
+        ts: Date.now() + i * 5000,
         ingestedAt: new Date(),
       });
     }

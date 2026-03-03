@@ -68,6 +68,15 @@ export type getDeviceSensorAggregateQuery = {
   interval: keyof typeof INTERVAL_MS;
 };
 
+export type getDeviceSensorAggregateArgs = {
+  deviceId: string;
+  sensor: string;
+  from: number;
+  to: number;
+  interval: string;
+  urc: string;
+};
+
 export interface DeviceSensorAggregateResult {
   ts: number;
   min: number;
