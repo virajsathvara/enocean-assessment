@@ -45,7 +45,7 @@ export class KafkaConsumerService {
           if (!value) return;
 
           const event: SensorEvent = JSON.parse(value);
-          this.bufferService.addEvent(event);
+          await this.bufferService.addEvent(event);
         } catch (err) {
           // TODO: DLQ for malformed events
           logger.error('Failed to process message', { error: String(err) });
